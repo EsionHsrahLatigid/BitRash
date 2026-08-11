@@ -35,6 +35,13 @@ std::vector<float> render(BitRashDSP& dsp, int count, float frequency = 0.021f)
     return output;
 }
 
+std::vector<float> processBlock(BitRashDSP& dsp, std::vector<float> input)
+{
+    float* channels[] { input.data() };
+    dsp.processBlock(channels, 1, static_cast<int>(input.size()));
+    return input;
+}
+
 float adjacentDifferenceEnergy(const std::vector<float>& values)
 {
     float energy = 0.0f;
@@ -80,6 +87,21 @@ int main()
         test_support::check(BitRashDSP::quantize(1.7f, 4, BitRashDSP::ClipMode::fold) < 1.0f, "fold mode folds out-of-range input");
         test_support::check(BitRashDSP::quantize(1.7f, 4, BitRashDSP::ClipMode::wrap) < 0.0f, "wrap mode wraps out-of-range input");
 
+        BitRashDSP::Parameters liveModeParams;
+        liveModeParams.bits = 4.0f;
+        liveModeParams.divisor = 1.0f;
+        liveModeParams.postFilter = 0.0f;
+        liveModeParams.mix = 1.0f;
+        liveModeParams.trimDb = 0.0f;
+        liveModeParams.mode = BitRashDSP::ClipMode::clamp;
+        auto liveMode = makeDsp(liveModeParams);
+        const auto clampOut = processBlock(liveMode, { 1.7f });
+        liveModeParams.mode = BitRashDSP::ClipMode::wrap;
+        liveMode.setTargets(liveModeParams);
+        const auto wrapOut = processBlock(liveMode, { 1.7f });
+        test_support::check(clampOut[0] > 0.9f, "live mode regression starts in clamp mode");
+        test_support::check(wrapOut[0] < -0.2f, "live mode change reaches wrap mode at next block without reset");
+
         BitRashDSP::Parameters holdParams;
         holdParams.bits = 8.0f;
         holdParams.divisor = 5.0f;
@@ -119,6 +141,18 @@ int main()
         test_support::check(hashSequence(noiseA) == hashSequence(noiseB), "TPDF dither is deterministic after seed/reset");
         test_support::check(std::abs(sum / 4096.0f) < 0.01f, "zero-input dither mean bounded");
         test_support::check(sumSquares / 4096.0f > 0.000001f && sumSquares / 4096.0f < 0.00008f, "zero-input dither variance bounded");
+
+        BitRashDSP::Parameters seedParams = ditherParams;
+        seedParams.seed = 0.100f;
+        auto seedLive = makeDsp(seedParams);
+        const auto seedA = processBlock(seedLive, std::vector<float>(32, 0.0f));
+        seedParams.seed = 0.700f;
+        seedLive.setTargets(seedParams);
+        const auto seedLiveB = processBlock(seedLive, std::vector<float>(32, 0.0f));
+        auto seedFreshB = makeDsp(seedParams);
+        const auto seedFreshBOut = processBlock(seedFreshB, std::vector<float>(32, 0.0f));
+        test_support::check(hashSequence(seedA) != hashSequence(seedLiveB), "live seed change changes seeded dither at next block");
+        test_support::check(hashSequence(seedLiveB) == hashSequence(seedFreshBOut), "live seed change reseeds deterministically without reset");
 
         BitRashDSP::Parameters plainError;
         plainError.bits = 5.0f;

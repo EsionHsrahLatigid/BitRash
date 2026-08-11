@@ -51,4 +51,6 @@ Targets are fixed for CI and humans:
 
 `Source/dsp/BitRashDSP.*` is JUCE-independent and preallocates all per-channel state at prepare/reset time. The steady-state process path performs no heap allocation, locks, file/network I/O, logging, or unbounded loops. Non-finite input and parameters are sanitized, feedback paths are capped, and final sample output is finite-clamped.
 
+Discrete input mode changes (`Clamp`, `Fold`, `Wrap`) apply at the next audio block boundary. Seed changes also apply at the next audio block boundary: both channel RNG states are deterministically reseeded and pending sample-hold clocks are restarted without allocation; filter and error memories are otherwise preserved.
+
 The dither and noise-shaping controls are deliberate harsh-noise tools. They are based on Lipshitz/Wannamaker/Vanderkooy quantization-error concepts, but BitRash does not claim transparent mastering-grade dither or formal psychoacoustic noise-shaping performance.

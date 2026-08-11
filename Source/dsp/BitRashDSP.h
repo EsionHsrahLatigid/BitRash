@@ -66,6 +66,8 @@ private:
     static float randomBipolar(std::uint32_t& state) noexcept;
     static float fold(float input) noexcept;
     static float wrap(float input) noexcept;
+    void applyBlockBoundaryDiscreteTargets() noexcept;
+    void reseedCurrentRngs() noexcept;
     int currentBits() const noexcept;
     int currentDivisor() const noexcept;
     int nextHoldLength(ChannelState& state, int divisor) const noexcept;

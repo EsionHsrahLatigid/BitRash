@@ -17,12 +17,9 @@ void BitRashDSP::prepare(double sampleRate, int maxBlockSize, int channels)
 void BitRashDSP::reset() noexcept
 {
     current_ = target_;
-    for (int channel = 0; channel < maxChannels; ++channel)
-    {
-        auto& state = state_[static_cast<std::size_t>(channel)];
+    for (auto& state : state_)
         state = {};
-        state.rng = seedToState(target_.seed, channel);
-    }
+    reseedCurrentRngs();
 }
 
 void BitRashDSP::setTargets(const Parameters& parameters) noexcept
@@ -46,6 +43,8 @@ void BitRashDSP::processBlock(float* const* channels, int numChannels, int numSa
     const int boundedChannels = std::min({ numChannels, channels_, maxChannels });
     if (boundedChannels <= 0 || numSamples <= 0)
         return;
+
+    applyBlockBoundaryDiscreteTargets();
 
     for (int sample = 0; sample < numSamples; ++sample)
     {
@@ -208,6 +207,26 @@ float BitRashDSP::wrap(float input) noexcept
     if (input < 0.0f)
         input += 2.0f;
     return input - 1.0f;
+}
+
+void BitRashDSP::applyBlockBoundaryDiscreteTargets() noexcept
+{
+    current_.mode = target_.mode;
+    if (std::abs(current_.seed - target_.seed) > 0.0000001f)
+    {
+        current_.seed = target_.seed;
+        reseedCurrentRngs();
+    }
+}
+
+void BitRashDSP::reseedCurrentRngs() noexcept
+{
+    for (int channel = 0; channel < maxChannels; ++channel)
+    {
+        auto& state = state_[static_cast<std::size_t>(channel)];
+        state.rng = seedToState(current_.seed, channel);
+        state.holdRemaining = 0;
+    }
 }
 
 int BitRashDSP::currentBits() const noexcept

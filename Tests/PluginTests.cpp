@@ -4,6 +4,8 @@
 
 #include <juce_events/juce_events.h>
 #include <cmath>
+#include <cstdint>
+#include <vector>
 
 namespace
 {
@@ -13,6 +15,24 @@ juce::AudioProcessor::BusesLayout layout(juce::AudioChannelSet input, juce::Audi
     buses.inputBuses.add(input);
     buses.outputBuses.add(output);
     return buses;
+}
+
+std::uint32_t hashBuffer(const juce::AudioBuffer<float>& buffer)
+{
+    std::uint32_t hash = 2166136261u;
+    for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+    {
+        const auto scaled = static_cast<std::int32_t>(std::round(buffer.getSample(0, sample) * 1000000.0f));
+        hash ^= static_cast<std::uint32_t>(scaled);
+        hash *= 16777619u;
+    }
+    return hash;
+}
+
+void setParameter(juce::AudioProcessorValueTreeState& parameters, const char* id, float value)
+{
+    auto* parameter = parameters.getParameter(id);
+    parameter->setValueNotifyingHost(parameter->convertTo0to1(value));
 }
 } // namespace
 
@@ -71,8 +91,8 @@ int main()
         test_support::check(std::isfinite(processor.parameters.getRawParameterValue(bitrash::parameters::bits)->load()), "invalid state ignored safely");
 
         processor.prepareToPlay(48000.0, 64);
-        processor.parameters.getParameter(bitrash::parameters::bits)->setValueNotifyingHost(bits->convertTo0to1(2.0f));
-        processor.parameters.getParameter(bitrash::parameters::divisor)->setValueNotifyingHost(divisor->convertTo0to1(4.0f));
+        setParameter(processor.parameters, bitrash::parameters::bits, 2.0f);
+        setParameter(processor.parameters, bitrash::parameters::divisor, 4.0f);
         juce::AudioBuffer<float> buffer(2, 128);
         for (int i = 0; i < buffer.getNumSamples(); ++i)
         {
@@ -88,5 +108,60 @@ int main()
         for (int i = 0; i < buffer.getNumSamples(); ++i)
             rightEnergy += std::abs(buffer.getSample(1, i));
         test_support::check(rightEnergy < 0.0001f, "silent right channel remains silent with dither disabled");
+
+        BitRashAudioProcessor modeProcessor;
+        setParameter(modeProcessor.parameters, bitrash::parameters::bits, 4.0f);
+        setParameter(modeProcessor.parameters, bitrash::parameters::divisor, 1.0f);
+        setParameter(modeProcessor.parameters, bitrash::parameters::postFilter, 0.0f);
+        setParameter(modeProcessor.parameters, bitrash::parameters::mix, 1.0f);
+        setParameter(modeProcessor.parameters, bitrash::parameters::trim, 0.0f);
+        setParameter(modeProcessor.parameters, bitrash::parameters::mode, 0.0f);
+        modeProcessor.prepareToPlay(48000.0, 16);
+        juce::AudioBuffer<float> modeBuffer(1, 1);
+        modeBuffer.setSample(0, 0, 1.7f);
+        modeProcessor.processBlock(modeBuffer, midi);
+        const float clampSample = modeBuffer.getSample(0, 0);
+        setParameter(modeProcessor.parameters, bitrash::parameters::mode, 2.0f);
+        modeBuffer.setSample(0, 0, 1.7f);
+        modeProcessor.processBlock(modeBuffer, midi);
+        test_support::check(clampSample > 0.9f, "plugin live mode regression starts in clamp");
+        test_support::check(modeBuffer.getSample(0, 0) < -0.2f, "plugin live mode changes to wrap without reset");
+
+        auto configureSeeded = [](BitRashAudioProcessor& p, float seedValue) {
+            setParameter(p.parameters, bitrash::parameters::bits, 8.0f);
+            setParameter(p.parameters, bitrash::parameters::divisor, 1.0f);
+            setParameter(p.parameters, bitrash::parameters::dither, 1.0f);
+            setParameter(p.parameters, bitrash::parameters::postFilter, 0.0f);
+            setParameter(p.parameters, bitrash::parameters::mix, 1.0f);
+            setParameter(p.parameters, bitrash::parameters::trim, 0.0f);
+            setParameter(p.parameters, bitrash::parameters::seed, seedValue);
+            p.prepareToPlay(48000.0, 64);
+        };
+
+        BitRashAudioProcessor seedA;
+        BitRashAudioProcessor seedB;
+        BitRashAudioProcessor seedNoChange;
+        configureSeeded(seedA, 0.1f);
+        configureSeeded(seedB, 0.1f);
+        configureSeeded(seedNoChange, 0.1f);
+        juce::AudioBuffer<float> seedBufferA(1, 64);
+        juce::AudioBuffer<float> seedBufferB(1, 64);
+        juce::AudioBuffer<float> seedBufferNoChange(1, 64);
+        seedBufferA.clear();
+        seedBufferB.clear();
+        seedBufferNoChange.clear();
+        seedA.processBlock(seedBufferA, midi);
+        seedB.processBlock(seedBufferB, midi);
+        seedNoChange.processBlock(seedBufferNoChange, midi);
+        setParameter(seedA.parameters, bitrash::parameters::seed, 0.7f);
+        setParameter(seedB.parameters, bitrash::parameters::seed, 0.7f);
+        seedBufferA.clear();
+        seedBufferB.clear();
+        seedBufferNoChange.clear();
+        seedA.processBlock(seedBufferA, midi);
+        seedB.processBlock(seedBufferB, midi);
+        seedNoChange.processBlock(seedBufferNoChange, midi);
+        test_support::check(hashBuffer(seedBufferA) == hashBuffer(seedBufferB), "plugin live seed change is deterministic across processors");
+        test_support::check(hashBuffer(seedBufferA) != hashBuffer(seedBufferNoChange), "plugin live seed change reseeds without reset");
     });
 }

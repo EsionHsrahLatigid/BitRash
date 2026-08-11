@@ -13,6 +13,7 @@
 - Seeded TPDF dither: uses two deterministic uniform PRNG draws per sample; tests verify deterministic reset and bounded zero-input statistics.
 - Error feedback/noise shaping: bounded feedback of previous quantization error with a high-frequency proxy term. This is an intentionally audible DHN control, not a high-fidelity transparency claim.
 - Jittered clock: deterministic seeded variation of hold length; tests verify identical seeded renders and difference from fixed divisor.
+- Live seed changes: applied only at the next audio block boundary, where both channel RNGs are reseeded and pending hold clocks restart. Tests verify deterministic live reseeding without requiring `prepareToPlay` or `reset`.
 - Pre/post filters: one-pole filtering around the destructive stages; tests verify a measurable high-frequency reduction.
 
 ## Limits
