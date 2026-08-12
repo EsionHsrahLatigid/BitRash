@@ -2,6 +2,8 @@
 #include "PluginProcessor.h"
 #include "ParameterIDs.h"
 
+#include <cmath>
+
 namespace
 {
 struct ControlSpec
@@ -25,6 +27,12 @@ constexpr std::array<ControlSpec, 12> controls {{
     { bitrash::parameters::mix, "Mix", "Dry to crushed signal blend." },
     { bitrash::parameters::trim, "Trim", "Output gain in decibels after the wet mix." },
 }};
+
+float normalizedSliderValue(juce::Slider& slider) noexcept
+{
+    const auto normalized = static_cast<float>(slider.valueToProportionOfLength(slider.getValue()));
+    return std::isfinite(normalized) ? juce::jlimit(0.0f, 1.0f, normalized) : 0.0f;
+}
 } // namespace
 
 BitRashAudioProcessorEditor::BitRashAudioProcessorEditor(BitRashAudioProcessor& p)
@@ -42,12 +50,20 @@ BitRashAudioProcessorEditor::BitRashAudioProcessorEditor(BitRashAudioProcessor& 
     setDescription("BitRash monochrome 8-bit custom editor");
     setWantsKeyboardFocus(true);
 
+    parameterDisplay.setComponentID("bitrash-parameter-display");
+    parameterDisplay.setName("BitRash parameter display");
+    parameterDisplay.setInterceptsMouseClicks(false, false);
+    parameterDisplay.setWantsKeyboardFocus(false);
+    addAndMakeVisible(parameterDisplay);
+
     for (std::size_t i = 0; i < controls.size(); ++i)
     {
         auto& slider = sliders[i];
         ehl::juce_design::styleSlider(slider);
         slider.setName(controls[i].name);
         slider.setComponentID(juce::String("bitrash-") + controls[i].id);
+        slider.setTitle(controls[i].name);
+        slider.setDescription(controls[i].tip);
         slider.setTooltip(controls[i].tip);
         slider.setWantsKeyboardFocus(true);
         addAndMakeVisible(slider);
@@ -62,11 +78,14 @@ BitRashAudioProcessorEditor::BitRashAudioProcessorEditor(BitRashAudioProcessor& 
         attachments[i] = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(ownerProcessor.parameters, controls[i].id, slider);
     }
 
+    updateParameterDisplay();
+    startTimerHz(30);
     setSize(defaultWidth, defaultHeight);
 }
 
 BitRashAudioProcessorEditor::~BitRashAudioProcessorEditor()
 {
+    stopTimer();
     for (auto& slider : sliders)
         slider.setLookAndFeel(nullptr);
     for (auto& label : labels)
@@ -82,7 +101,22 @@ void BitRashAudioProcessorEditor::paint(juce::Graphics& g)
 
 void BitRashAudioProcessorEditor::resized()
 {
+    parameterDisplay.setBounds(ehl::juce_design::parameterDisplayArea(getLocalBounds()));
+
     for (std::size_t i = 0; i < sliders.size(); ++i)
         ehl::juce_design::layoutLabelledControl(labels[i], sliders[i],
                                                 ehl::juce_design::controlCell(getLocalBounds(), i));
+}
+
+void BitRashAudioProcessorEditor::timerCallback()
+{
+    updateParameterDisplay();
+}
+
+void BitRashAudioProcessorEditor::updateParameterDisplay()
+{
+    parameterDisplay.setValues({ normalizedSliderValue(sliders[0]),
+                                 normalizedSliderValue(sliders[1]),
+                                 normalizedSliderValue(sliders[2]),
+                                 normalizedSliderValue(sliders[3]) });
 }

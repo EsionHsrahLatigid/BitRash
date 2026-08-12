@@ -7,7 +7,8 @@
 
 class BitRashAudioProcessor;
 
-class BitRashAudioProcessorEditor final : public juce::AudioProcessorEditor
+class BitRashAudioProcessorEditor final : public juce::AudioProcessorEditor,
+                                          private juce::Timer
 {
 public:
     explicit BitRashAudioProcessorEditor(BitRashAudioProcessor&);
@@ -23,8 +24,12 @@ public:
     static constexpr int minimumHeight = ehl::juce_design::Metrics::minimumHeight;
 
 private:
+    void timerCallback() override;
+    void updateParameterDisplay();
+
     BitRashAudioProcessor& ownerProcessor;
     ehl::juce_design::LookAndFeel ehlLookAndFeel;
+    ehl::juce_design::ParameterDisplay parameterDisplay { ehl::juce_design::DisplayKind::bitcrusher };
     juce::TooltipWindow tooltipWindow { this, 700 };
     juce::String tooltipText;
     std::array<juce::Slider, 12> sliders;

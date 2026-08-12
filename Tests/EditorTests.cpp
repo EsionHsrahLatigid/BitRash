@@ -25,6 +25,14 @@ constexpr std::array<const char*, 12> ids {{
     bitrash::parameters::trim,
 }};
 
+bool interceptsMouseClicks(const juce::Component& component) noexcept
+{
+    bool allowsThis = true;
+    bool allowsChildren = true;
+    component.getInterceptsMouseClicks(allowsThis, allowsChildren);
+    return allowsThis || allowsChildren;
+}
+
 void checkPaintContract(juce::AudioProcessorEditor& editor)
 {
     juce::Image image(juce::Image::RGB, BitRashAudioProcessorEditor::defaultWidth,
@@ -37,6 +45,8 @@ void checkPaintContract(juce::AudioProcessorEditor& editor)
 
     const auto background = ehl::juce_design::Palette::ink();
     const auto divider = ehl::juce_design::Palette::low();
+    const auto foreground = ehl::juce_design::Palette::paper();
+    bool topStripeIsPaper = true;
     bool headerHasInk = false;
     bool separatorBandIsExact = true;
     bool bodyIsPlain = true;
@@ -47,7 +57,9 @@ void checkPaintContract(juce::AudioProcessorEditor& editor)
         for (int x = 0; x < image.getWidth(); ++x)
         {
             const auto pixel = image.getPixelAt(x, y);
-            headerHasInk = headerHasInk || (y < 48 && pixel != background);
+            if (y < 4)
+                topStripeIsPaper = topStripeIsPaper && pixel == foreground;
+            headerHasInk = headerHasInk || (y >= 4 && y < 48 && pixel != background);
             if (y >= 48 && y < ehl::juce_design::Metrics::headerHeight)
             {
                 const bool onDivider = y == ehl::juce_design::Metrics::dividerY
@@ -62,8 +74,9 @@ void checkPaintContract(juce::AudioProcessorEditor& editor)
         }
     }
 
-    test_support::check(headerHasInk, "module chrome paints header text above y=48");
-    test_support::check(separatorBandIsExact, "module chrome paints only divider at y=56 from x=16 to w-17");
+    test_support::check(topStripeIsPaper, "module chrome paints top paper stripe");
+    test_support::check(headerHasInk, "module chrome paints header text below top stripe");
+    test_support::check(separatorBandIsExact, "module chrome paints only divider at Metrics::dividerY from x=16 to w-17");
     test_support::check(bodyIsPlain, "module chrome leaves body y>=64 as ink");
     test_support::check(maxChannelSpread <= 4,
                         "paint stays monochrome within EHL palette tolerance, max spread "
@@ -83,8 +96,10 @@ void checkLayoutContract(juce::AudioProcessorEditor& editor, int width, int heig
         auto* slider = dynamic_cast<juce::Slider*>(component);
         test_support::check(slider != nullptr, std::string("control is slider: ") + ids[i]);
         test_support::check(slider->getTooltip().isNotEmpty(), std::string("control has tooltip: ") + ids[i]);
-        test_support::check(slider->getSliderStyle() == juce::Slider::LinearHorizontal,
+        test_support::check(slider->getSliderStyle() == juce::Slider::RotaryHorizontalVerticalDrag,
                             std::string("module slider style: ") + ids[i]);
+        test_support::check(slider->getTextBoxPosition() == juce::Slider::TextBoxBelow,
+                            std::string("module slider text box below: ") + ids[i]);
         test_support::check(slider->getTextBoxWidth() == ehl::juce_design::Metrics::valueWidth,
                             std::string("module slider value width: ") + ids[i]);
         test_support::check(slider->findColour(juce::Slider::trackColourId) == ehl::juce_design::Palette::mid(),
@@ -101,6 +116,34 @@ void checkLayoutContract(juce::AudioProcessorEditor& editor, int width, int heig
         test_support::check(label != nullptr, std::string("explicit label: ") + ids[i]);
         test_support::check(label->getBounds() == expected.label, std::string("module label grid: ") + ids[i]);
     }
+
+    auto* display = dynamic_cast<ehl::juce_design::ParameterDisplay*>(
+        editor.findChildWithID("bitrash-parameter-display"));
+    test_support::check(display != nullptr, "parameter display component id");
+    test_support::check(display->getKind() == ehl::juce_design::DisplayKind::bitcrusher,
+                        "parameter display kind");
+    test_support::check(display->getBounds() == ehl::juce_design::parameterDisplayArea(editor.getLocalBounds()),
+                        "parameter display bounds");
+    test_support::check(! interceptsMouseClicks(*display), "parameter display is noninteractive");
+}
+
+void checkParameterDisplayFollowsControls(juce::AudioProcessorEditor& editor)
+{
+    editor.setBounds(0, 0, BitRashAudioProcessorEditor::defaultWidth,
+                     BitRashAudioProcessorEditor::defaultHeight);
+    editor.resized();
+
+    auto* display = dynamic_cast<ehl::juce_design::ParameterDisplay*>(
+        editor.findChildWithID("bitrash-parameter-display"));
+    auto* bits = dynamic_cast<juce::Slider*>(editor.findChildWithID("bitrash-bits"));
+    test_support::check(display != nullptr && bits != nullptr, "display and bits slider exist");
+
+    const auto before = display->getValues()[0];
+    bits->setValue(bits->getMaximum(), juce::sendNotificationSync);
+    juce::Thread::sleep(40);
+    juce::Timer::callPendingTimersSynchronously();
+    const auto after = display->getValues()[0];
+    test_support::check(after > before + 0.25f, "parameter display follows real slider value changes");
 }
 } // namespace
 
@@ -126,6 +169,9 @@ int main()
                             BitRashAudioProcessorEditor::defaultHeight);
         checkLayoutContract(*editor, BitRashAudioProcessorEditor::minimumWidth,
                             BitRashAudioProcessorEditor::minimumHeight);
+        checkLayoutContract(*editor, ehl::juce_design::Metrics::maximumWidth,
+                            ehl::juce_design::Metrics::maximumHeight);
+        checkParameterDisplayFollowsControls(*editor);
         checkPaintContract(*editor);
     });
 }
