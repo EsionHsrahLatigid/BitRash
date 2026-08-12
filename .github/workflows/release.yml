@@ -4,12 +4,19 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Existing semver release tag
+        required: true
+        type: string
 
 jobs:
   release:
-    uses: EsionHsrahLatigid/juce-ci/.github/workflows/plugin-release.yml@926c5bb10335c29503f92869169759ec18d71449
+    uses: EsionHsrahLatigid/juce-ci/.github/workflows/plugin-release.yml@274b3128ecb014b0604759976ea215c294fdfd75
     permissions:
       actions: read
       contents: write
     with:
       product_name: BitRash
+      tag_name: ${{ inputs.tag_name || github.ref_name }}
