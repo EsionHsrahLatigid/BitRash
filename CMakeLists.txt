@@ -46,6 +46,8 @@ if(BITRASH_BUILD_PLUGIN)
         FetchContent_MakeAvailable(JUCE)
     endif()
 
+    add_subdirectory(modules/juce-ehl-design-module)
+
     set(BITRASH_FORMATS VST3 Standalone)
     if(APPLE)
         list(APPEND BITRASH_FORMATS AU)
@@ -84,6 +86,7 @@ if(BITRASH_BUILD_PLUGIN)
     target_link_libraries(BitRash
         PRIVATE
             bitrash_dsp
+            EHL::JuceDesign
             juce::juce_audio_utils
             juce::juce_dsp
         PUBLIC
@@ -154,7 +157,7 @@ if(BITRASH_BUILD_PLUGIN)
 
         add_executable(bitrash_editor_tests Tests/EditorTests.cpp)
         target_include_directories(bitrash_editor_tests PRIVATE Source)
-        target_link_libraries(bitrash_editor_tests PRIVATE BitRash juce::juce_audio_utils)
+        target_link_libraries(bitrash_editor_tests PRIVATE BitRash EHL::JuceDesign juce::juce_audio_utils)
         add_test(NAME bitrash_editor_tests COMMAND bitrash_editor_tests)
 
         add_test(

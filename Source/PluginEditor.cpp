@@ -31,7 +31,10 @@ BitRashAudioProcessorEditor::BitRashAudioProcessorEditor(BitRashAudioProcessor& 
     : AudioProcessorEditor(&p), ownerProcessor(p),
       tooltipText("BitRash: deterministic quantization, sample-hold decimation, seeded dither, bounded error feedback, jitter, filters, mix, and trim.")
 {
-    setResizeLimits(minimumWidth, minimumHeight, defaultWidth * 2, defaultHeight * 2);
+    setLookAndFeel(&ehlLookAndFeel);
+    setResizeLimits(minimumWidth, minimumHeight,
+                    ehl::juce_design::Metrics::maximumWidth,
+                    ehl::juce_design::Metrics::maximumHeight);
     setResizable(true, true);
     setName("BitRash editor");
     setComponentID("bitrash-editor");
@@ -42,26 +45,18 @@ BitRashAudioProcessorEditor::BitRashAudioProcessorEditor(BitRashAudioProcessor& 
     for (std::size_t i = 0; i < controls.size(); ++i)
     {
         auto& slider = sliders[i];
-        slider.setSliderStyle(juce::Slider::LinearHorizontal);
-        slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 112, 24);
+        ehl::juce_design::styleSlider(slider);
         slider.setName(controls[i].name);
         slider.setComponentID(juce::String("bitrash-") + controls[i].id);
         slider.setTooltip(controls[i].tip);
         slider.setWantsKeyboardFocus(true);
-        slider.setColour(juce::Slider::trackColourId, juce::Colour(0xff8a8a86));
-        slider.setColour(juce::Slider::backgroundColourId, juce::Colour(0xff2a2a2a));
-        slider.setColour(juce::Slider::thumbColourId, juce::Colour(0xfff2f2f0));
-        slider.setColour(juce::Slider::textBoxTextColourId, juce::Colour(0xfff2f2f0));
-        slider.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour(0xff050505));
-        slider.setColour(juce::Slider::textBoxOutlineColourId, juce::Colour(0xff8a8a86));
         addAndMakeVisible(slider);
 
         auto& label = labels[i];
         label.setText(controls[i].name, juce::dontSendNotification);
-        label.setJustificationType(juce::Justification::centredLeft);
-        label.setColour(juce::Label::textColourId, juce::Colour(0xfff2f2f0));
+        ehl::juce_design::styleLabel(label);
         label.setTooltip(controls[i].tip);
-        label.attachToComponent(&slider, true);
+        label.setComponentID(juce::String("bitrash-") + controls[i].id + "-label");
         addAndMakeVisible(label);
 
         attachments[i] = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(ownerProcessor.parameters, controls[i].id, slider);
@@ -70,41 +65,24 @@ BitRashAudioProcessorEditor::BitRashAudioProcessorEditor(BitRashAudioProcessor& 
     setSize(defaultWidth, defaultHeight);
 }
 
+BitRashAudioProcessorEditor::~BitRashAudioProcessorEditor()
+{
+    for (auto& slider : sliders)
+        slider.setLookAndFeel(nullptr);
+    for (auto& label : labels)
+        label.setLookAndFeel(nullptr);
+    tooltipWindow.setLookAndFeel(nullptr);
+    setLookAndFeel(nullptr);
+}
+
 void BitRashAudioProcessorEditor::paint(juce::Graphics& g)
 {
-    const auto area = getLocalBounds();
-    g.fillAll(juce::Colour(0xff050505));
-
-    g.setColour(juce::Colour(0xfff2f2f0));
-    g.setFont(juce::FontOptions(24.0f, juce::Font::bold));
-    g.drawText("BitRash", 32, 16, area.getWidth() - 64, 32, juce::Justification::centredLeft);
-
-    g.setColour(juce::Colour(0xff8a8a86));
-    g.setFont(juce::FontOptions(12.0f));
-    g.drawText("BIT CRUSHER", 32, 48, area.getWidth() - 64, 16, juce::Justification::centredLeft);
-
-    g.setColour(juce::Colour(0xff2a2a2a));
-    g.drawHorizontalLine(72, 32.0f, static_cast<float>(area.getWidth() - 32));
+    ehl::juce_design::paintEditorChrome(g, getLocalBounds(), "BitRash", "BIT CRUSHER");
 }
 
 void BitRashAudioProcessorEditor::resized()
 {
-    auto area = getLocalBounds().reduced(32);
-    area.removeFromTop(48);
-
-    const int rows = 6;
-    const int columns = 2;
-    const int rowHeight = area.getHeight() / rows;
-    const int colWidth = area.getWidth() / columns;
-
     for (std::size_t i = 0; i < sliders.size(); ++i)
-    {
-        const int row = static_cast<int>(i) % rows;
-        const int column = static_cast<int>(i) / rows;
-        auto cell = juce::Rectangle<int>(area.getX() + column * colWidth,
-                                         area.getY() + row * rowHeight,
-                                         colWidth,
-                                         rowHeight).reduced(8, 8);
-        sliders[i].setBounds(cell.withTrimmedLeft(132));
-    }
+        ehl::juce_design::layoutLabelledControl(labels[i], sliders[i],
+                                                ehl::juce_design::controlCell(getLocalBounds(), i));
 }
