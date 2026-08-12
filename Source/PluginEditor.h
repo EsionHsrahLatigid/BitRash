@@ -24,6 +24,8 @@ public:
     static constexpr int minimumHeight = ehl::juce_design::Metrics::minimumHeight;
 
 private:
+    friend struct EditorTestAccess;
+
     void timerCallback() override;
     void updateParameterDisplay();
 
