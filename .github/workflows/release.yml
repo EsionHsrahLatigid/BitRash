@@ -13,7 +13,7 @@ on:
 
 jobs:
   release:
-    uses: EsionHsrahLatigid/juce-ci/.github/workflows/plugin-release.yml@274b3128ecb014b0604759976ea215c294fdfd75
+    uses: EsionHsrahLatigid/juce-ci/.github/workflows/plugin-release.yml@c14000715ed454a2838f52bd68086f3395931daa
     permissions:
       actions: read
       contents: write
