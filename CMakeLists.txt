@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(BitRash VERSION 0.1.0 LANGUAGES C CXX)
+project(BitRash VERSION 0.1.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -73,7 +73,7 @@ if(BITRASH_BUILD_PLUGIN)
         COMPANY_NAME "EsionHsrahLatigid"
         BUNDLE_ID "jp.ehl.bitrash"
         PRODUCT_NAME "BitRash"
-        DESCRIPTION "deterministic digital harsh noise bitcrusher"
+        DESCRIPTION "deterministic 1-16 bit crusher with decimation, dither, and bounded error feedback"
         PLUGIN_MANUFACTURER_CODE EHL_
         PLUGIN_CODE BtRh
         FORMATS ${BITRASH_FORMATS}

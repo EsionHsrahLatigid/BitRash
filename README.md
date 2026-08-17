@@ -1,6 +1,6 @@
 # BitRash
 
-BitRash is an EHL Digital Harsh Noise JUCE audio-effect plugin. It combines 1-16 bit uniform quantization, sample-hold decimation, seeded TPDF dither, bounded error feedback/noise shaping, deterministic clock jitter, pre/post filtering, input clamp/fold/wrap modes, wet/dry mix, and output trim.
+BitRash is a deterministic 1-16 bit crusher with decimation, dither, and bounded error feedback. It combines 1-16 bit uniform quantization, sample-hold decimation, seeded TPDF dither, bounded error feedback/noise shaping, deterministic clock jitter, pre/post filtering, input clamp/fold/wrap modes, wet/dry mix, and output trim.
 
 ## Identity
 
