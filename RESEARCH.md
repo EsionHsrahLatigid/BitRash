@@ -3,8 +3,8 @@
 ## Sources
 
 - Lipshitz, Wannamaker, and Vanderkooy, AES convention record `https://secure.aes.org/forum/pubs/conventions/?elib=5575`: primary basis for treating dither and error feedback/noise shaping as quantization-error controls.
-- G001 source register: maps BitRash to deterministic 1-16 bit crushing, sample-hold decimation, dither, and bounded error-feedback behavior.
-- G002 reviewed foundation: supplies the JUCE/CMake/APVTS/custom-editor/staging structure, reviewed Windows VST3 directory staging, and matched mono/stereo bus contract.
+- Product requirements: deterministic 1-16 bit crushing, sample-hold decimation, dither, and bounded error-feedback behavior.
+- Reviewed JUCE foundation: CMake/APVTS/custom-editor/staging structure, Windows VST3 directory staging, and matched mono/stereo bus behavior.
 
 ## Source To Decision Map
 

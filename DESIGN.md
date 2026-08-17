@@ -1,6 +1,6 @@
 # Design
 
-The UI uses the shared EHL JUCE design module: 4 px base spacing with 8 px major spacing, four-level palette `#050505`, `#2A2A2A`, `#8A8A86`, `#F2F2F0`, no external images, and no external fonts. The editor default size is 640 x 360 and the minimum is 512 x 320. `GenericAudioProcessorEditor` is banned for DHN9 products.
+The UI uses the shared EHL JUCE design module: 4 px base spacing with 8 px major spacing, four-level palette `#050505`, `#2A2A2A`, `#8A8A86`, `#F2F2F0`, no external images, and no external fonts. The editor default size is 640 x 360 and the minimum is 512 x 320. Production EHL plugin editors must not use `GenericAudioProcessorEditor`.
 
 BitRash exposes every parameter as an APVTS parameter and as a custom rotary editor control with a stable component ID, accessible name, keyboard focus, and tooltip. A noninteractive shared `ParameterDisplay` using `DisplayKind::bitcrusher` occupies the module display area between the header and controls. The editor timer polls real slider values at 30 Hz and supplies four normalized parameter values to that display; it visualizes parameter state only. The paint layer remains shared chrome: product name, compact function label, and one divider. Controls use the shared six-column/two-row cell grid below the parameter display. Do not add a full-canvas grid, tagline, package ID, decorative motif, fake meter, panel frame, outer border, or invented audio telemetry. DSP behavior, parameter IDs, bundle identity, accessibility, and host automation identity are unchanged.
 
